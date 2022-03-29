@@ -3,7 +3,7 @@ VPATH = src
 FOENIX = module/Calypsi-m68k-Foenix
 
 # Common source files
-ASM_SRCS =
+ASM_SRCS = hello.s
 C_SRCS = main.c
 
 MODEL = --code-model=large --data-model=small
@@ -18,13 +18,13 @@ OBJS = $(ASM_SRCS:%.s=obj/%.o) $(C_SRCS:%.c=obj/%.o)
 OBJS_DEBUG = $(ASM_SRCS:%.s=obj/%-debug.o) $(C_SRCS:%.c=obj/%-debug.o)
 
 obj/%.o: %.s
-	as68k --core=68000 $(MODEL) --target=Foenix --debug --list-file=$(@:%.o=%.lst) -o $@ $<
+	motor68k -fe -o$@ $<
 
 obj/%.o: %.c
 	cc68k --core=68000 $(MODEL) --target=Foenix --debug --list-file=$(@:%.o=%.lst) -o $@ $<
 
 obj/%-debug.o: %.s
-	as68k --core=68000 $(MODEL) --debug --list-file=$(@:%.o=%.lst) -o $@ $<
+	motor68k -fe -o$@ $<
 
 obj/%-debug.o: %.c
 	cc68k --core=68000 $(MODEL) --debug --list-file=$(@:%.o=%.lst) -o $@ $<
