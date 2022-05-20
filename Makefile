@@ -1,12 +1,19 @@
+# Source files
+ASM_SRCS = \
+	hello.s
+
+C_SRCS = \
+	main.c
+
+# Paths
 VPATH = src
-DEPDIR := .deps
+DEPS_DEBUG_PATH = .deps
+DEPS_RELEASE_PATH = .deps-release
+BUILD_DEBUG_PATH = build
+BUILD_RELEASE_PATH = build-release
 
+# Foenix support library
 FOENIX = module/Calypsi-m68k-Foenix
-
-# Common source files
-ASM_SRCS = hello.s
-C_SRCS = main.c
-
 MODEL = --code-model=large --data-model=small
 LIB_MODEL = lc-sd
 
@@ -15,45 +22,52 @@ A2560U_RULES = $(FOENIX)/linker-files/a2560u-simplified.scm
 A2560K_RULES = $(FOENIX)/linker-files/a2560k-simplified.scm
 
 # Object files
-OBJS = $(ASM_SRCS:%.s=obj/%.o) $(C_SRCS:%.c=obj/%.o)
-OBJS_DEBUG = $(ASM_SRCS:%.s=obj/%-debug.o) $(C_SRCS:%.c=obj/%-debug.o)
+OBJS_RELEASE = $(ASM_SRCS:%.s=$(BUILD_RELEASE_PATH)/%.o) $(C_SRCS:%.c=$(BUILD_RELEASE_PATH)/%.o)
+OBJS_DEBUG = $(ASM_SRCS:%.s=$(BUILD_DEBUG_PATH)/%.o) $(C_SRCS:%.c=$(BUILD_DEBUG_PATH)/%.o)
 
-obj/%.o: %.s $(DEPDIR)/%.d | $(DEPDIR)
-	motor68k -fe -d$(DEPDIR)/$*.d -o$@ $<
+# Build rules
+$(BUILD_RELEASE_PATH)/%.o: %.s $(DEPS_RELEASE_PATH)/%.d | $(DEPS_RELEASE_PATH) $(BUILD_RELEASE_PATH)
+	motor68k -fe -d$(DEPS_RELEASE_PATH)/$*.d -o$@ $<
 
-obj/%.o: %.c $(DEPDIR)/%.d | $(DEPDIR)
-	@cc68k --core=68000 $(MODEL) --target=Foenix --debug --dependencies -MQ$@ >$(DEPDIR)/$*.d $<
+$(BUILD_RELEASE_PATH)/%.o: %.c $(DEPS_RELEASE_PATH)/%.d | $(DEPS_RELEASE_PATH) $(BUILD_RELEASE_PATH)
+	@cc68k --core=68000 $(MODEL) --target=Foenix --debug --dependencies -MQ$@ >$(DEPS_RELEASE_PATH)/$*.d $<
 	cc68k --core=68000 $(MODEL) --target=Foenix --debug --list-file=$(@:%.o=%.lst) -o $@ $<
 
-obj/%-debug.o: %.s $(DEPDIR)/%-debug.d | $(DEPDIR)
-	motor68k -fe -d$(DEPDIR)/$*.d -o$@ $<
+$(BUILD_DEBUG_PATH)/%.o: %.s $(DEPS_DEBUG_PATH)/%.d | $(DEPS_DEBUG_PATH) $(BUILD_DEBUG_PATH)
+	motor68k -fe -d$(DEPS_DEBUG_PATH)/$*.d -o$@ $<
 
-obj/%-debug.o: %.c $(DEPDIR)/%-debug.d | $(DEPDIR)
-	@cc68k --core=68000 $(MODEL) --debug --dependencies -MQ$@ >$(DEPDIR)/$*-debug.d $<
+$(BUILD_DEBUG_PATH)/%.o: %.c $(DEPS_DEBUG_PATH)/%.d | $(DEPS_DEBUG_PATH) $(BUILD_DEBUG_PATH)
+	@cc68k --core=68000 $(MODEL) --debug --dependencies -MQ$@ >$(DEPS_DEBUG_PATH)/$*-debug.d $<
 	cc68k --core=68000 $(MODEL) --debug --list-file=$(@:%.o=%.lst) -o $@ $<
 
-hello.elf: $(OBJS_DEBUG) $(FOENIX_LIB)
-	ln68k --debug -o $@ $^ $(A2560U_RULES) clib-68000-$(LIB_MODEL).a --list-file=hello-debug.lst --cross-reference --rtattr printf=reduced --semi-hosted --target=Foenix --rtattr cstartup=Foenix_user --rtattr stubs=foenix --stack-size=2000 --sstack-size=800
+hello.pgz:  $(OBJS_RELEASE) $(FOENIX_LIB)
+	ln68k -o $@ $^ $(A2560U_RULES) clib-68000-$(LIB_MODEL)-Foenix.a --output-format=pgz --list-file=$(BUILD_RELEASE_PATH)/$@.lst --cross-reference --rtattr printf=reduced --rtattr cstartup=Foenix_user
 
-hello.pgz:  $(OBJS) $(FOENIX_LIB)
-	ln68k -o $@ $^ $(A2560U_RULES) clib-68000-$(LIB_MODEL)-Foenix.a --output-format=pgz --list-file=hello-Foenix.lst --cross-reference --rtattr printf=reduced --rtattr cstartup=Foenix_user
+hello.elf: $(OBJS_DEBUG)
+	ln68k --debug -o $@ $^ $(A2560U_RULES) clib-68000-$(LIB_MODEL).a --list-file=$(BUILD_DEBUG_PATH)/$@.lst --cross-reference --rtattr printf=reduced --semi-hosted --target=Foenix --stack-size=2000 --sstack-size=800
 
-hello.hex:  $(OBJS) $(FOENIX_LIB)
-	ln68k -o $@ $^ $(A2560K_RULES) clib-68000-$(LIB_MODEL)-Foenix.a --output-format=intel-hex --list-file=hello-Foenix.lst --cross-reference --rtattr printf=reduced --rtattr cstartup=Foenix_morfe --stack-size=2000
+hello.hex:  $(OBJS_DEBUG) $(FOENIX_LIB)
+	ln68k -o $@ $^ $(A2560K_RULES) clib-68000-$(LIB_MODEL)-Foenix.a --output-format=intel-hex --list-file=$(BUILD_DEBUG_PATH)/$@.lst --cross-reference --rtattr printf=reduced --rtattr cstartup=Foenix_morfe --stack-size=2000
 
 $(FOENIX_LIB):
-	(cd $(FOENIX) ; make all)
+	(cd $(FOENIX) ; $(MAKE) all)
 
+# Clean utility
 clean:
-	-rm $(DEPFILES)
-	-rm $(OBJS) $(OBJS:%.o=%.lst) $(OBJS_DEBUG) $(OBJS_DEBUG:%.o=%.lst) $(FOENIX_LIB)
-	-rm hello.elf hello.pgz hello-debug.lst hello-Foenix.lst
-	-(cd $(FOENIX) ; make clean)
+	-rm -rf $(BUILD_RELEASE_PATH) $(BUILD_DEBUG_PATH) $(FOENIX_LIB)
+	-rm hello.elf hello.pgz hello.hex
+	-(cd $(FOENIX) ; $(MAKE) clean)
 
-$(DEPDIR): ; @mkdir -p $@
 
-DEPFILES := $(C_SRCS:%.c=$(DEPDIR)/%.d) $(C_SRCS:%.c=$(DEPDIR)/%-debug.d) \
-			$(ASM_SRCS:%.s=$(DEPDIR)/%.d) $(ASM_SRCS:%.s=$(DEPDIR)/%-debug.d)
-$(DEPFILES):
+# Make directory utility
+$(DEPS_RELEASE_PATH) $(DEPS_DEBUG_PATH) $(BUILD_RELEASE_PATH) $(BUILD_DEBUG_PATH): ; @mkdir -p $@
 
-include $(wildcard $(DEPFILES))
+# Dependency files
+DEP_RELEASE_FILES := $(C_SRCS:%.c=$(DEPS_RELEASE_PATH)/%.d) $(ASM_SRCS:%.s=$(DEPS_RELEASE_PATH)/%.d)
+DEP_DEBUG_FILES := $(C_SRCS:%.c=$(DEPS_DEBUG_PATH)/%.d) $(ASM_SRCS:%.s=$(DEPS_DEBUG_PATH)/%.d)
+
+$(DEP_RELEASE_FILES):
+
+$(DEP_DEBUG_FILES):
+
+include $(wildcard $(DEP_RELEASE_FILES) $(DEP_DEBUG_FILES))
