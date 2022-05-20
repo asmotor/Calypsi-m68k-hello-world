@@ -19,14 +19,14 @@ OBJS = $(ASM_SRCS:%.s=obj/%.o) $(C_SRCS:%.c=obj/%.o)
 OBJS_DEBUG = $(ASM_SRCS:%.s=obj/%-debug.o) $(C_SRCS:%.c=obj/%-debug.o)
 
 obj/%.o: %.s $(DEPDIR)/%.d | $(DEPDIR)
-	motor68k -fe -d$*.d -o$@ $<
+	motor68k -fe -d$(DEPDIR)/$*.d -o$@ $<
 
 obj/%.o: %.c $(DEPDIR)/%.d | $(DEPDIR)
 	@cc68k --core=68000 $(MODEL) --target=Foenix --debug --dependencies -MQ$@ >$(DEPDIR)/$*.d $<
 	cc68k --core=68000 $(MODEL) --target=Foenix --debug --list-file=$(@:%.o=%.lst) -o $@ $<
 
 obj/%-debug.o: %.s $(DEPDIR)/%-debug.d | $(DEPDIR)
-	motor68k -fe -d$*.d -o$@ $<
+	motor68k -fe -d$(DEPDIR)/$*.d -o$@ $<
 
 obj/%-debug.o: %.c $(DEPDIR)/%-debug.d | $(DEPDIR)
 	@cc68k --core=68000 $(MODEL) --debug --dependencies -MQ$@ >$(DEPDIR)/$*-debug.d $<
