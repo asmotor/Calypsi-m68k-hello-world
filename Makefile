@@ -54,7 +54,7 @@ $(FOENIX_LIB):
 
 # Clean utility
 clean:
-	-rm -rf $(BUILD_RELEASE_PATH) $(BUILD_DEBUG_PATH) $(FOENIX_LIB)
+	-rm -rf $(BUILD_RELEASE_PATH) $(BUILD_DEBUG_PATH) $(FOENIX_LIB) $(DEPS_RELEASE_PATH) $(DEPS_DEBUG_PATH)
 	-rm hello.elf hello.pgz hello.hex
 	-(cd $(FOENIX) ; $(MAKE) clean)
 
